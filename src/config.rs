@@ -10,4 +10,10 @@ pub enum Opt {
         #[structopt(short, long)]
         numbered: bool,
     },
+    Del {
+        line: u32,
+
+        #[structopt(short, long)]
+        force: bool,
+    },
 }
