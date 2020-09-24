@@ -16,15 +16,24 @@ impl Rem {
     }
 
     fn cat(&self) {
-        let contents = fs::read_to_string(&self.path).expect("Could not read rem notes!");
-        print!("{}", contents);
+        let notes_path = PathBuf::from(&self.path);
+        if !notes_path.exists() {
+            println!("No notes found! Try adding a note! `rem add Is mayonnaise an instrument?`")
+        } else {
+            let contents = fs::read_to_string(&self.path).expect("Could not read notes!");
+            print!("{}", contents);
+        }
     }
 
     fn write_note(&self, note: Vec<String>) -> std::io::Result<()> {
         let whole_note = format!("{}\n", note.join(" "));
 
         let notes_path = PathBuf::from(&self.path);
-        let mut file = OpenOptions::new().append(true).open(notes_path)?;
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(true)
+            .open(notes_path)?;
         file.write_all(whole_note.as_bytes())?;
 
         Ok(())
