@@ -1,20 +1,22 @@
-# rem
+# rem-cli
 Remember things, on the CLI
 
 ## Installation
 
 ```
-$ cargo add rem
+$ cargo install rem-cli
 ```
+
+Or clone this repository and compile!
 
 ## Usage
 
 ```
-$ rem add Is mayonnaise an instrument?
+$ rem-cli add Is mayonnaise an instrument?
 
-$ rem add 987654
+$ rem-cli add 987654
 
-$ rem cat
+$ rem-cli cat
 Is mayonnaise an instrument?
 987654
 ```
