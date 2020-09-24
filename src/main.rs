@@ -3,7 +3,6 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
-
 mod config;
 
 struct Rem {
@@ -15,13 +14,19 @@ impl Rem {
         Rem { path: path }
     }
 
-    fn cat(&self) {
+    fn cat(&self, numbered: bool) {
         let notes_path = PathBuf::from(&self.path);
         if !notes_path.exists() {
             println!("No notes found! Try adding a note! `rem add Is mayonnaise an instrument?`")
         } else {
             let contents = fs::read_to_string(&self.path).expect("Could not read notes!");
-            print!("{}", contents);
+            for (i, line) in contents.lines().enumerate() {
+                if numbered {
+                    print!("{}: {}\n", i, line)
+                } else {
+                    println!("{}", line.trim());
+                }
+            }
         }
     }
 
@@ -48,7 +53,7 @@ fn main() {
     let rem = Rem::new(notes_path);
 
     match opts {
-        config::Opt::Cat {} => rem.cat(),
+        config::Opt::Cat { numbered } => rem.cat(numbered),
         config::Opt::Add { note } => rem.write_note(note).expect("Could not add note!"),
     }
 }
