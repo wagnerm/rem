@@ -1,6 +1,6 @@
 [package]
 name = "rem-cli"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Max Wagner <wagnerm@github.com>"]
 edition = "2018"
 description = "A CLI tool to help you remember things"
