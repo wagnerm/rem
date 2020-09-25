@@ -1,5 +1,7 @@
+use std::error::Error;
 use std::fs;
 use std::fs::OpenOptions;
+use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -15,13 +17,19 @@ impl Rem {
         Rem { path: path }
     }
 
-    fn cat(&self) {
+    fn cat(&self, numbered: bool) {
         let notes_path = PathBuf::from(&self.path);
         if !notes_path.exists() {
             println!("No notes found! Try adding a note! `rem add Is mayonnaise an instrument?`")
         } else {
             let contents = fs::read_to_string(&self.path).expect("Could not read notes!");
-            print!("{}", contents);
+            for (i, line) in contents.lines().enumerate() {
+                if numbered {
+                    print!("{}: {}\n", i, line)
+                } else {
+                    println!("{}", line.trim());
+                }
+            }
         }
     }
 
@@ -38,6 +46,62 @@ impl Rem {
 
         Ok(())
     }
+
+    fn delete_line(&self, line: u32, force: bool) -> Result<(), Box<dyn Error>> {
+        let notes_path = PathBuf::from(&self.path);
+
+        if !notes_path.exists() {
+            println!("No notes found! Try adding a note! `rem add Is mayonnaise an instrument?`");
+            Ok(())
+        } else {
+            let contents = fs::read_to_string(&self.path).expect("Could not read notes!");
+            let mut lines: Vec<&str> = contents.lines().collect();
+
+            if lines.is_empty() {
+                println!("No notes found! Try adding a note!");
+            } else if lines.len() - 1 < line as usize {
+                println!("Line specified not in notes!");
+            } else {
+                if !force && !self.confirm()? {
+                    println!("Deletion stopped.");
+                    return Ok(());
+                }
+
+                lines.remove(line as usize);
+
+                let mut file = OpenOptions::new()
+                    .write(true)
+                    .truncate(true)
+                    .open(notes_path)?;
+                file.write_all(lines.join("\n").as_bytes())?;
+
+                println!("Remove: {}", line);
+            }
+
+            Ok(())
+        }
+    }
+
+    fn confirm(&self) -> io::Result<bool> {
+        let mut input = String::new();
+
+        loop {
+            print!("Are you sure you want to continue? (y/n) ");
+            let _ = io::stdout().flush();
+
+            io::stdin().read_line(&mut input)?;
+
+            let c = match &*input.trim().to_lowercase() {
+                "y" | "yes" => true,
+                "n" | "no" => false,
+                _ => {
+                    continue;
+                }
+            };
+
+            return Ok(c);
+        }
+    }
 }
 
 fn main() {
@@ -48,7 +112,10 @@ fn main() {
     let rem = Rem::new(notes_path);
 
     match opts {
-        config::Opt::Cat {} => rem.cat(),
+        config::Opt::Cat { numbered } => rem.cat(numbered),
         config::Opt::Add { note } => rem.write_note(note).expect("Could not add note!"),
+        config::Opt::Del { line, force } => rem
+            .delete_line(line, force)
+            .expect("Could not delete line!"),
     }
 }
