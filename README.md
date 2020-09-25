@@ -21,6 +21,15 @@ Is mayonnaise an instrument?
 987654
 ```
 
+## Notes Path
+
+By default notes are stored in `$HOME/notes.rem`.
+
+Optionally you can change the notes path by setting an environment variable. You can insert this into your shell profile.
+```
+$ export REM_CLI_NOTES_PATH=/my-cloud-drive/notes.rem
+```
+
 ## License
 
 [MIT](https://github.com/wagnerm/rem/blob/master/LICENSE) License
