@@ -23,7 +23,7 @@ Is mayonnaise an instrument?
 
 ## Notes Path
 
-By default notes are stored in `$HOME/notes.rem`.
+By default notes are stored in `$HOME/rem_notes.txt`.
 
 Optionally you can change the notes path by setting an environment variable. You can insert this into your shell profile.
 ```
