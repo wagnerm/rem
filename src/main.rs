@@ -1,3 +1,4 @@
+use std::env;
 use std::error::Error;
 use std::fs;
 use std::fs::OpenOptions;
@@ -13,8 +14,20 @@ struct Rem {
 }
 
 impl Rem {
-    fn new(path: String) -> Rem {
-        Rem { path: path }
+    fn new() -> Rem {
+        Rem {
+            path: Rem::notes_path(),
+        }
+    }
+
+    fn notes_path() -> String {
+        match env::var("REM_CLI_NOTES_PATH") {
+            Ok(notes_path) => notes_path,
+            Err(_) => {
+                let home = std::env::var("HOME").unwrap();
+                format!("{}/notes.rem", home)
+            }
+        }
     }
 
     fn cat(&self, numbered: bool) {
@@ -107,9 +120,7 @@ impl Rem {
 fn main() {
     let opts = config::Opt::from_args();
 
-    let home = std::env::var("HOME").unwrap();
-    let notes_path = format!("{}/notes.rem", home);
-    let rem = Rem::new(notes_path);
+    let rem = Rem::new();
 
     match opts {
         config::Opt::Cat { numbered } => rem.cat(numbered),
@@ -117,5 +128,23 @@ fn main() {
         config::Opt::Del { line, force } => rem
             .delete_line(line, force)
             .expect("Could not delete line!"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_notes_location() {
+        let home = std::env::var("HOME").unwrap();
+        assert_eq!(format!("{}/notes.rem", home), Rem::notes_path());
+    }
+
+    #[test]
+    fn test_env_overrides_notes_location() {
+        env::set_var("REM_CLI_NOTES_PATH", "/cloud_drive/rem_notes.txt");
+
+        assert_eq!("/cloud_drive/rem_notes.txt", Rem::notes_path());
     }
 }
