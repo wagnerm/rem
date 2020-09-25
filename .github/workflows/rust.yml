@@ -22,6 +22,8 @@ jobs:
       run: cargo test
     - name: Publish
       if: ${{ success() && (github.ref == 'refs/heads/master') }}
+      env:
+        CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
       run: |
         cargo login $CARGO_TOKEN
         cargo publish
