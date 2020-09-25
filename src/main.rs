@@ -9,7 +9,7 @@ use structopt::StructOpt;
 mod config;
 
 struct Rem {
-    path: String,
+    rem_config_path: String,
 }
 
 impl Rem {
@@ -31,6 +31,17 @@ impl Rem {
                 }
             }
         }
+    }
+
+    // set config
+    fn set_config(&self, config_type: config::ConfigType) -> Result<(), Box<dyn Error>> {
+        match config_type {
+            config::ConfigType::SetNotePath { note_path } => self.set_note_path(note_path),
+        }
+    }
+
+    fn set_note_path(&self, note_path: String) -> Result<(), Box<dyn Error>> {
+        let notes_path = PathBuf::from(&self.path);
     }
 
     fn write_note(&self, note: Vec<String>) -> std::io::Result<()> {
@@ -108,8 +119,8 @@ fn main() {
     let opts = config::Opt::from_args();
 
     let home = std::env::var("HOME").unwrap();
-    let notes_path = format!("{}/notes.rem", home);
-    let rem = Rem::new(notes_path);
+    let rem_config_path = format!("{}/.rem", home);
+    let rem = Rem::new(rem_config_path);
 
     match opts {
         config::Opt::Cat { numbered } => rem.cat(numbered),
@@ -117,5 +128,8 @@ fn main() {
         config::Opt::Del { line, force } => rem
             .delete_line(line, force)
             .expect("Could not delete line!"),
+        config::Opt::Config { config_type } => {
+            rem.set_config(config_type).expect("Counld not set config!")
+        }
     }
 }
