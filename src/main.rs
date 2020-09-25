@@ -25,7 +25,7 @@ impl Rem {
             Ok(notes_path) => notes_path,
             Err(_) => {
                 let home = std::env::var("HOME").unwrap();
-                format!("{}/notes.rem", home)
+                format!("{}/rem_notes.txt", home)
             }
         }
     }
@@ -137,8 +137,9 @@ mod tests {
 
     #[test]
     fn test_default_notes_location() {
-        let home = std::env::var("HOME").unwrap();
-        assert_eq!(format!("{}/notes.rem", home), Rem::notes_path());
+        env::remove_var("REM_CLI_NOTES_PATH");
+        let home = env::var("HOME").unwrap();
+        assert_eq!(format!("{}/rem_notes.txt", home), Rem::notes_path());
     }
 
     #[test]
