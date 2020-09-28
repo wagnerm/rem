@@ -30,20 +30,21 @@ impl Rem {
         }
     }
 
-    fn cat(&self, numbered: bool) {
-        let notes_path = PathBuf::from(&self.path);
-        if !notes_path.exists() {
-            println!("No notes found! Try adding a note! `rem add Is mayonnaise an instrument?`")
-        } else {
-            let contents = fs::read_to_string(&self.path).expect("Could not read notes!");
-            for (i, line) in contents.lines().enumerate() {
-                if numbered {
-                    print!("{}: {}\n", i, line)
-                } else {
-                    println!("{}", line.trim());
-                }
+    fn cat(&self, numbered: bool) -> Result<(), Box<dyn Error>> {
+        let contents = self.read_note_file()?;
+        if contents.is_empty() {
+            println!("No notes found! Try adding a note!");
+        }
+
+        for (i, line) in contents.lines().enumerate() {
+            if numbered {
+                print!("{}: {}\n", i, line)
+            } else {
+                println!("{}", line.trim());
             }
         }
+
+        Ok(())
     }
 
     fn write_note(&self, note: Vec<String>) -> std::io::Result<()> {
@@ -63,42 +64,40 @@ impl Rem {
     fn delete_line(&self, line: u32, force: bool) -> Result<(), Box<dyn Error>> {
         let notes_path = PathBuf::from(&self.path);
 
-        if !notes_path.exists() {
-            println!("No notes found! Try adding a note! `rem add Is mayonnaise an instrument?`");
-            Ok(())
+        let contents = self.read_note_file()?;
+        let mut lines: Vec<&str> = contents.lines().collect();
+
+        if lines.is_empty() {
+            println!("No notes found! Try adding a note!");
+        } else if lines.len() - 1 < line as usize {
+            println!("Line specified not in notes!");
         } else {
-            let contents = fs::read_to_string(&self.path).expect("Could not read notes!");
-            let mut lines: Vec<&str> = contents.lines().collect();
-
-            if lines.is_empty() {
-                println!("No notes found! Try adding a note!");
-            } else if lines.len() - 1 < line as usize {
-                println!("Line specified not in notes!");
-            } else {
-                if !force && !self.confirm()? {
-                    println!("Deletion stopped.");
-                    return Ok(());
-                }
-
-                lines.remove(line as usize);
-
-                let mut file = OpenOptions::new()
-                    .write(true)
-                    .truncate(true)
-                    .open(notes_path)?;
-                file.write_all(lines.join("\n").as_bytes())?;
-
-                println!("Remove: {}", line);
+            if !force && !self.confirm()? {
+                println!("Deletion stopped.");
+                return Ok(());
             }
 
-            Ok(())
+            lines.remove(line as usize);
+
+            let mut file = OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .open(notes_path)?;
+            file.write_all(lines.join("\n").as_bytes())?;
+
+            println!("Remove: {}", line);
         }
+
+        Ok(())
     }
 
     fn read_note_file(&self) -> Result<String, Box<dyn Error>> {
         let notes_path = PathBuf::from(&self.path);
         if !notes_path.exists() {
-            println!("No notes found! Try adding a note! `rem add Is mayonnaise an instrument?`")
+            // Treat a missing notes file as no notes since the user can
+            // Create notes are any time in this file.
+            // This is more user friendly than spitting out an error.
+            Ok(String::from(""))
         } else {
             let contents = fs::read_to_string(&self.path)?;
             Ok(contents)
@@ -133,7 +132,7 @@ fn main() {
     let rem = Rem::new();
 
     match opts {
-        config::Opt::Cat { numbered } => rem.cat(numbered),
+        config::Opt::Cat { numbered } => rem.cat(numbered).expect("Cound not read notes!"),
         config::Opt::Add { note } => rem.write_note(note).expect("Could not add note!"),
         config::Opt::Del { line, force } => rem
             .delete_line(line, force)
