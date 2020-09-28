@@ -95,6 +95,16 @@ impl Rem {
         }
     }
 
+    fn read_note_file(&self) -> Result<String, Box<dyn Error>> {
+        let notes_path = PathBuf::from(&self.path);
+        if !notes_path.exists() {
+            println!("No notes found! Try adding a note! `rem add Is mayonnaise an instrument?`")
+        } else {
+            let contents = fs::read_to_string(&self.path)?;
+            Ok(contents)
+        }
+    }
+
     fn confirm(&self) -> io::Result<bool> {
         let mut input = String::new();
 
