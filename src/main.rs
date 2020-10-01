@@ -6,7 +6,6 @@ use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use tempfile::NamedTempFile;
 
 mod config;
 
@@ -148,6 +147,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_default_notes_location() {
@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn test_read_rem_notes_file() {
         let mut file = NamedTempFile::new().unwrap();
-        file.write_all("new note who dis".as_bytes());
+        file.write_all("new note who dis".as_bytes()).unwrap();
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path);
 
