@@ -1,6 +1,6 @@
 [package]
 name = "rem-cli"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Max Wagner <wagnerm@github.com>"]
 edition = "2018"
 description = "A CLI tool to help you remember things"
@@ -11,3 +11,4 @@ license = "MIT"
 [dependencies]
 clap = "2.33.1"
 structopt = "0.3.13"
+tempfile = "3.1.0"
