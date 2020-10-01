@@ -6,6 +6,7 @@ use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use tempfile::NamedTempFile;
 
 mod config;
 
@@ -18,6 +19,10 @@ impl Rem {
         Rem {
             path: Rem::notes_path(),
         }
+    }
+
+    fn new_with_path(path: String) -> Rem {
+        Rem { path: path }
     }
 
     fn notes_path() -> String {
@@ -156,5 +161,15 @@ mod tests {
         env::set_var("REM_CLI_NOTES_PATH", "/cloud_drive/rem_notes.txt");
 
         assert_eq!("/cloud_drive/rem_notes.txt", Rem::notes_path());
+    }
+
+    #[test]
+    fn test_read_rem_notes_file() {
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all("new note who dis".as_bytes());
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path);
+
+        assert_eq!("new note who dis", rem.read_note_file().unwrap());
     }
 }
