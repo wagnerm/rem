@@ -87,6 +87,12 @@ impl Rem {
                 .write(true)
                 .truncate(true)
                 .open(notes_path)?;
+
+            // Ensure the last line is a new line
+            let last_line = lines.pop().unwrap();
+            let new_last_line = format!("{}\n", last_line);
+            lines.push(new_last_line.as_str());
+
             file.write_all(lines.join("\n").as_bytes())?;
 
             println!("Remove: {}", line);
