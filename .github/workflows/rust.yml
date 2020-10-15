@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -19,7 +19,7 @@ jobs:
     - name: Run tests
       run: ./script/test
     - name: Publish
-      if: ${{ success() && (github.ref == 'refs/heads/master') }}
+      if: ${{ success() && (github.ref == 'refs/heads/main') }}
       env:
         CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
       run: |
