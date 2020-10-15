@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::error::Error;
 use std::fs;
@@ -6,11 +7,20 @@ use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
-
 mod config;
 
 struct Rem {
     path: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Note {
+    text: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Notes {
+    notes: Vec<Note>,
 }
 
 impl Rem {
@@ -36,44 +46,54 @@ impl Rem {
 
     fn cat(&self, numbered: bool) -> Result<(), Box<dyn Error>> {
         let contents = self.read_note_file()?;
-        if contents.is_empty() {
+        if contents.notes.len() == 0 {
             println!("No notes found! Try adding a note!");
         }
 
-        for (i, line) in contents.lines().enumerate() {
+        for (i, note) in contents.notes.iter().enumerate() {
             if numbered {
-                print!("{}: {}\n", i, line)
+                print!("{}: {}\n", i, note.text)
             } else {
-                println!("{}", line.trim());
+                println!("{}", note.text.trim());
             }
         }
 
         Ok(())
     }
 
-    fn write_note(&self, note: Vec<String>) -> std::io::Result<()> {
-        let whole_note = format!("{}\n", note.join(" "));
+    fn write_note(&self, note: Vec<String>) -> Result<(), Box<dyn Error>> {
+        let whole_note = format!("{}", note.join(" "));
+        let n = Note { text: whole_note };
+
+        let mut notes = self.read_note_file()?;
+        notes.notes.push(n);
+
+        self.write_all_notes(notes)?;
+
+        Ok(())
+    }
+
+    fn write_all_notes(&self, notes: Notes) -> Result<(), Box<dyn Error>> {
+        let serialized = serde_yaml::to_string(&notes)?;
 
         let notes_path = PathBuf::from(&self.path);
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
-            .append(true)
+            .truncate(true)
             .open(notes_path)?;
-        file.write_all(whole_note.as_bytes())?;
+
+        file.write_all(serialized.as_bytes())?;
 
         Ok(())
     }
 
     fn delete_line(&self, line: u32, force: bool) -> Result<(), Box<dyn Error>> {
-        let notes_path = PathBuf::from(&self.path);
+        let mut n = self.read_note_file()?;
 
-        let contents = self.read_note_file()?;
-        let mut lines: Vec<&str> = contents.lines().collect();
-
-        if lines.is_empty() {
+        if n.notes.is_empty() {
             println!("No notes found! Try adding a note!");
-        } else if lines.len() - 1 < line as usize {
+        } else if n.notes.len() - 1 < line as usize {
             println!("Line specified not in notes!");
         } else {
             if !force && !self.confirm()? {
@@ -81,36 +101,33 @@ impl Rem {
                 return Ok(());
             }
 
-            lines.remove(line as usize);
+            n.notes.remove(line as usize);
+            println!("{}", n.notes.len());
+            self.write_all_notes(n)?;
 
-            let mut file = OpenOptions::new()
-                .write(true)
-                .truncate(true)
-                .open(notes_path)?;
-
-            // Ensure the last line is a new line
-            let last_line = lines.pop().unwrap();
-            let new_last_line = format!("{}\n", last_line);
-            lines.push(new_last_line.as_str());
-
-            file.write_all(lines.join("\n").as_bytes())?;
-
-            println!("Remove: {}", line);
+            println!("Removed: {}", line);
         }
 
         Ok(())
     }
 
-    fn read_note_file(&self) -> Result<String, Box<dyn Error>> {
+    fn read_note_file(&self) -> Result<Notes, Box<dyn Error>> {
         let notes_path = PathBuf::from(&self.path);
         if !notes_path.exists() {
             // Treat a missing notes file as no notes since the user can
             // Create notes are any time in this file.
             // This is more user friendly than spitting out an error.
-            Ok(String::from(""))
+            Ok(Notes { notes: vec![] })
         } else {
             let contents = fs::read_to_string(&self.path)?;
-            Ok(contents)
+            println!("{} {}", contents.len(), contents);
+            if contents.len() == 0 || contents == String::from("\n") {
+                // the file only contains a new line or is empty
+                Ok(Notes { notes: vec![] })
+            } else {
+                let deserialized_contents: Notes = serde_yaml::from_str(&contents)?;
+                Ok(deserialized_contents)
+            }
         }
     }
 
@@ -171,11 +188,47 @@ mod tests {
 
     #[test]
     fn test_read_rem_notes_file() {
-        let mut file = NamedTempFile::new().unwrap();
-        file.write_all("new note who dis".as_bytes()).unwrap();
+        let file = NamedTempFile::new().unwrap();
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path);
 
-        assert_eq!("new note who dis", rem.read_note_file().unwrap());
+        rem.write_note(vec![String::from("new note who dis")])
+            .unwrap();
+
+        let n = rem.read_note_file().unwrap();
+        assert_eq!(1, n.notes.len());
+        assert_eq!("new note who dis", n.notes[0].text);
+    }
+
+    #[test]
+    fn test_rem_formats_file_in_yaml() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(vec![String::from("new note who dis")])
+            .unwrap();
+
+        let yaml = fs::read_to_string(path).unwrap();
+        assert_eq!(
+            String::from("---\nnotes:\n  - text: new note who dis"),
+            yaml
+        );
+    }
+
+    #[test]
+    fn test_rem_adds_multiple_notes() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(vec![String::from("first")]).unwrap();
+        rem.write_note(vec![String::from("second")]).unwrap();
+
+        let yaml = fs::read_to_string(path).unwrap();
+        assert_eq!(
+            String::from("---\nnotes:\n  - text: first\n  - text: second"),
+            yaml
+        );
     }
 }
