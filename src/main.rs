@@ -120,7 +120,6 @@ impl Rem {
             Ok(Notes { notes: vec![] })
         } else {
             let contents = fs::read_to_string(&self.path)?;
-            println!("{} {}", contents.len(), contents);
             if contents.len() == 0 || contents == String::from("\n") {
                 // the file only contains a new line or is empty
                 Ok(Notes { notes: vec![] })
@@ -230,5 +229,50 @@ mod tests {
             String::from("---\nnotes:\n  - text: first\n  - text: second"),
             yaml
         );
+    }
+
+    #[test]
+    fn test_rem_deletes_note() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(vec![String::from("first")]).unwrap();
+        rem.write_note(vec![String::from("second")]).unwrap();
+        rem.write_note(vec![String::from("third")]).unwrap();
+
+        rem.delete_line(1, true).unwrap();
+
+        let yaml = fs::read_to_string(path).unwrap();
+        assert_eq!(
+            String::from("---\nnotes:\n  - text: first\n  - text: third"),
+            yaml
+        );
+    }
+
+    #[test]
+    fn test_rem_deletes_from_empty_note() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.delete_line(0, true).unwrap();
+
+        let yaml = fs::read_to_string(path).unwrap();
+        assert!(yaml.is_empty());
+    }
+
+    #[test]
+    fn test_rem_delete_skips_out_of_bounds() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(vec![String::from("first")]).unwrap();
+
+        rem.delete_line(1, true).unwrap();
+
+        let yaml = fs::read_to_string(path).unwrap();
+        assert_eq!(String::from("---\nnotes:\n  - text: first"), yaml);
     }
 }
