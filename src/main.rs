@@ -63,6 +63,10 @@ impl Rem {
 
     fn write_note(&self, note: Vec<String>) -> Result<(), Box<dyn Error>> {
         let whole_note = format!("{}", note.join(" "));
+        if whole_note.is_empty() || whole_note.trim().is_empty() {
+            println!("Your note is empty, try adding some content.");
+            return Ok(());
+        }
         let n = Note { text: whole_note };
 
         let mut notes = self.read_note_file()?;
@@ -102,7 +106,6 @@ impl Rem {
             }
 
             n.notes.remove(line as usize);
-            println!("{}", n.notes.len());
             self.write_all_notes(n)?;
 
             println!("Removed: {}", line);
@@ -274,5 +277,44 @@ mod tests {
 
         let yaml = fs::read_to_string(path).unwrap();
         assert_eq!(String::from("---\nnotes:\n  - text: first"), yaml);
+    }
+
+    #[test]
+    fn test_rem_writes_note() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(vec![String::from("new note who dis")])
+            .unwrap();
+
+        let n = rem.read_note_file().unwrap();
+        assert_eq!(1, n.notes.len());
+        assert_eq!("new note who dis", n.notes[0].text);
+    }
+
+    #[test]
+    fn test_rem_rejects_empty_note() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(vec![String::from("")]).unwrap();
+
+        let n = rem.read_note_file().unwrap();
+        assert_eq!(0, n.notes.len());
+    }
+
+    #[test]
+    fn test_rem_rejects_whitespace_note() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(vec![String::from("                ")])
+            .unwrap();
+
+        let n = rem.read_note_file().unwrap();
+        assert_eq!(0, n.notes.len());
     }
 }
