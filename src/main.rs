@@ -102,7 +102,6 @@ impl Rem {
             }
 
             n.notes.remove(line as usize);
-            println!("{}", n.notes.len());
             self.write_all_notes(n)?;
 
             println!("Removed: {}", line);
