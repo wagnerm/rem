@@ -17,6 +17,7 @@ struct Rem {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Note {
+    name: Option<String>,
     text: String,
 }
 
@@ -26,8 +27,11 @@ struct Notes {
 }
 
 impl Note {
-    fn new(text: String) -> Note {
-        Note { text: text }
+    fn new(text: String, name: Option<String>) -> Note {
+        Note {
+            name: name,
+            text: text,
+        }
     }
 }
 
@@ -75,7 +79,7 @@ impl Rem {
             println!("Your note is empty, try adding some content.");
             return Ok(());
         }
-        let n = Note::new(whole_note);
+        let n = Note::new(whole_note, None);
 
         let mut notes = self.read_note_file()?;
         notes.notes.push(n);
@@ -131,10 +135,12 @@ impl Rem {
             } else if n.notes.len() - 1 < line as usize {
                 println!("Line specified not in notes!");
             } else {
-                let raw = self.edit(editor, &n.notes[line as usize].text)?;
+                let note_to_edit = &n.notes[line as usize];
+
+                let raw = self.edit(editor, &note_to_edit.text)?;
                 let trimmed_text = String::from(raw.trim());
 
-                n.notes[line as usize] = Note::new(trimmed_text.clone());
+                n.notes[line as usize] = Note::new(trimmed_text.clone(), note_to_edit.name.clone());
                 self.write_all_notes(n)?;
 
                 println!("Note committed! {}", trimmed_text);
@@ -270,7 +276,7 @@ mod tests {
 
         let yaml = fs::read_to_string(path).unwrap();
         assert_eq!(
-            String::from("---\nnotes:\n  - text: new note who dis"),
+            String::from("---\nnotes:\n  - name: ~\n    text: new note who dis"),
             yaml
         );
     }
@@ -286,7 +292,9 @@ mod tests {
 
         let yaml = fs::read_to_string(path).unwrap();
         assert_eq!(
-            String::from("---\nnotes:\n  - text: first\n  - text: second"),
+            String::from(
+                "---\nnotes:\n  - name: ~\n    text: first\n  - name: ~\n    text: second"
+            ),
             yaml
         );
     }
@@ -305,7 +313,7 @@ mod tests {
 
         let yaml = fs::read_to_string(path).unwrap();
         assert_eq!(
-            String::from("---\nnotes:\n  - text: first\n  - text: third"),
+            String::from("---\nnotes:\n  - name: ~\n    text: first\n  - name: ~\n    text: third"),
             yaml
         );
     }
@@ -333,7 +341,10 @@ mod tests {
         rem.delete_line(1, true).unwrap();
 
         let yaml = fs::read_to_string(path).unwrap();
-        assert_eq!(String::from("---\nnotes:\n  - text: first"), yaml);
+        assert_eq!(
+            String::from("---\nnotes:\n  - name: ~\n    text: first"),
+            yaml
+        );
     }
 
     #[test]
