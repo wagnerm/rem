@@ -75,7 +75,7 @@ impl Rem {
             println!("Your note is empty, try adding some content.");
             return Ok(());
         }
-        let n = Note { text: whole_note };
+        let n = Note::new(whole_note);
 
         let mut notes = self.read_note_file()?;
         notes.notes.push(n);
