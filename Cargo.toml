@@ -9,6 +9,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+assert_cmd = "1.0.1"
 clap = "2.33.1"
 structopt = "0.3.13"
 tempfile = "3.1.0"
