@@ -224,7 +224,7 @@ fn main() {
 
     match opts {
         config::Opt::Cat { numbered } => rem.cat(numbered).expect("Cound not read notes!"),
-        config::Opt::Add { note } => rem.write_note(note).expect("Could not add note!"),
+        config::Opt::Add { note, name } => rem.write_note(note).expect("Could not add note!"),
         config::Opt::Del { line, force } => rem
             .delete_line(line, force)
             .expect("Could not delete line!"),

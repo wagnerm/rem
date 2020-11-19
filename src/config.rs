@@ -5,6 +5,9 @@ use structopt::StructOpt;
 pub enum Opt {
     Add {
         note: Vec<String>,
+
+        #[structopt(short, long)]
+        name: Option<String>,
     },
     Cat {
         #[structopt(short, long)]
