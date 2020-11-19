@@ -62,12 +62,28 @@ impl Rem {
             println!("No notes found! Try adding a note!");
         }
 
+        let mut lines = Vec::new();
         for (i, note) in contents.notes.iter().enumerate() {
+            let mut numbered_text = String::from("");
+            let mut name_text = String::from("");
             if numbered {
-                print!("{}: {}\n", i, note.text)
-            } else {
-                println!("{}", note.text.trim());
+                numbered_text = format!("{}: ", i);
             }
+
+            if let Some(name) = &note.name {
+                name_text = format!("{} ~ ", name);
+            }
+
+            lines.push(format!(
+                "{}{}{}",
+                numbered_text,
+                name_text,
+                note.text.trim()
+            ));
+        }
+
+        for line in lines.iter() {
+            println!("{}", line);
         }
 
         Ok(())
