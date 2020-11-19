@@ -12,6 +12,9 @@ pub enum Opt {
     Cat {
         #[structopt(short, long)]
         numbered: bool,
+
+        #[structopt(short, long)]
+        without_names: bool,
     },
     Del {
         line: u32,

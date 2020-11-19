@@ -56,7 +56,7 @@ impl Rem {
         }
     }
 
-    fn cat(&self, numbered: bool) -> Result<(), Box<dyn Error>> {
+    fn cat(&self, numbered: bool, without_names: bool) -> Result<(), Box<dyn Error>> {
         let contents = self.read_note_file()?;
         if contents.notes.len() == 0 {
             println!("No notes found! Try adding a note!");
@@ -70,8 +70,10 @@ impl Rem {
                 numbered_text = format!("{}: ", i);
             }
 
-            if let Some(name) = &note.name {
-                name_text = format!("{} ~ ", name);
+            if !without_names {
+                if let Some(name) = &note.name {
+                    name_text = format!("{} ~ ", name);
+                }
             }
 
             lines.push(format!(
@@ -239,7 +241,12 @@ fn main() {
     let rem = Rem::new();
 
     match opts {
-        config::Opt::Cat { numbered } => rem.cat(numbered).expect("Cound not read notes!"),
+        config::Opt::Cat {
+            numbered,
+            without_names,
+        } => rem
+            .cat(numbered, without_names)
+            .expect("Cound not read notes!"),
         config::Opt::Add { note, name } => rem.write_note(note, name).expect("Could not add note!"),
         config::Opt::Del { line, force } => rem
             .delete_line(line, force)
