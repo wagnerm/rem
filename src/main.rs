@@ -6,7 +6,9 @@ use std::fs::OpenOptions;
 use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
+use std::process::Command;
 use structopt::StructOpt;
+use tempfile::NamedTempFile;
 mod config;
 
 struct Rem {
@@ -21,6 +23,12 @@ struct Note {
 #[derive(Debug, Deserialize, Serialize)]
 struct Notes {
     notes: Vec<Note>,
+}
+
+impl Note {
+    fn new(text: String) -> Note {
+        Note { text: text }
+    }
 }
 
 impl Rem {
@@ -114,6 +122,47 @@ impl Rem {
         Ok(())
     }
 
+    fn edit_note(&self, line: u32) -> Result<(), Box<dyn Error>> {
+        if let Ok(editor) = self.get_editor() {
+            let mut n = self.read_note_file()?;
+
+            if n.notes.is_empty() {
+                println!("No notes found! Try adding a note!");
+            } else if n.notes.len() - 1 < line as usize {
+                println!("Line specified not in notes!");
+            } else {
+                let raw = self.edit(editor, &n.notes[line as usize].text)?;
+                let trimmed_text = String::from(raw.trim());
+
+                n.notes[line as usize] = Note::new(trimmed_text.clone());
+                self.write_all_notes(n)?;
+
+                println!("Note committed! {}", trimmed_text);
+            }
+        } else {
+            println!("EDITOR is not set!");
+            return Ok(());
+        }
+
+        Ok(())
+    }
+
+    fn edit(&self, editor: String, initial_text: &String) -> Result<String, Box<dyn Error>> {
+        let mut f = NamedTempFile::new()?;
+        f.write_all(initial_text.as_bytes())?;
+
+        // Close the file, but persist it for reading from the editor
+        let temp_path = f.into_temp_path();
+        let path = String::from(temp_path.to_str().unwrap());
+
+        Command::new(editor).arg(&path).status()?;
+
+        let raw_path = PathBuf::from(&path);
+        let raw = fs::read_to_string(&raw_path)?;
+
+        Ok(raw)
+    }
+
     fn read_note_file(&self) -> Result<Notes, Box<dyn Error>> {
         let notes_path = PathBuf::from(&self.path);
         if !notes_path.exists() {
@@ -153,6 +202,13 @@ impl Rem {
             return Ok(c);
         }
     }
+
+    fn get_editor(&self) -> Result<String, env::VarError> {
+        match env::var("EDITOR") {
+            Ok(editor) => Ok(editor),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 fn main() {
@@ -166,6 +222,7 @@ fn main() {
         config::Opt::Del { line, force } => rem
             .delete_line(line, force)
             .expect("Could not delete line!"),
+        config::Opt::Edit { line } => rem.edit_note(line).expect("Cound not edit note!"),
     }
 }
 
@@ -316,5 +373,14 @@ mod tests {
 
         let n = rem.read_note_file().unwrap();
         assert_eq!(0, n.notes.len());
+    }
+
+    #[test]
+    fn test_get_editor() {
+        env::remove_var("EDITOR");
+        env::set_var("EDITOR", "foo");
+        let rem = Rem::new();
+        let editor = rem.get_editor().unwrap();
+        assert_eq!("foo", editor);
     }
 }

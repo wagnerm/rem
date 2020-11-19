@@ -16,4 +16,7 @@ pub enum Opt {
         #[structopt(short, long)]
         force: bool,
     },
+    Edit {
+        line: u32,
+    },
 }
