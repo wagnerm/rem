@@ -17,6 +17,7 @@ struct Rem {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Note {
+    name: Option<String>,
     text: String,
 }
 
@@ -26,8 +27,11 @@ struct Notes {
 }
 
 impl Note {
-    fn new(text: String) -> Note {
-        Note { text: text }
+    fn new(text: String, name: Option<String>) -> Note {
+        Note {
+            name: name,
+            text: text,
+        }
     }
 }
 
@@ -52,30 +56,48 @@ impl Rem {
         }
     }
 
-    fn cat(&self, numbered: bool) -> Result<(), Box<dyn Error>> {
+    fn cat(&self, numbered: bool, without_names: bool) -> Result<(), Box<dyn Error>> {
         let contents = self.read_note_file()?;
         if contents.notes.len() == 0 {
             println!("No notes found! Try adding a note!");
         }
 
+        let mut lines = Vec::new();
         for (i, note) in contents.notes.iter().enumerate() {
+            let mut numbered_text = String::from("");
+            let mut name_text = String::from("");
             if numbered {
-                print!("{}: {}\n", i, note.text)
-            } else {
-                println!("{}", note.text.trim());
+                numbered_text = format!("{}: ", i);
             }
+
+            if !without_names {
+                if let Some(name) = &note.name {
+                    name_text = format!("{} ~ ", name);
+                }
+            }
+
+            lines.push(format!(
+                "{}{}{}",
+                numbered_text,
+                name_text,
+                note.text.trim()
+            ));
+        }
+
+        for line in lines.iter() {
+            println!("{}", line);
         }
 
         Ok(())
     }
 
-    fn write_note(&self, note: Vec<String>) -> Result<(), Box<dyn Error>> {
+    fn write_note(&self, note: Vec<String>, name: Option<String>) -> Result<(), Box<dyn Error>> {
         let whole_note = format!("{}", note.join(" "));
         if whole_note.is_empty() || whole_note.trim().is_empty() {
             println!("Your note is empty, try adding some content.");
             return Ok(());
         }
-        let n = Note::new(whole_note);
+        let n = Note::new(whole_note, name);
 
         let mut notes = self.read_note_file()?;
         notes.notes.push(n);
@@ -131,10 +153,12 @@ impl Rem {
             } else if n.notes.len() - 1 < line as usize {
                 println!("Line specified not in notes!");
             } else {
-                let raw = self.edit(editor, &n.notes[line as usize].text)?;
+                let note_to_edit = &n.notes[line as usize];
+
+                let raw = self.edit(editor, &note_to_edit.text)?;
                 let trimmed_text = String::from(raw.trim());
 
-                n.notes[line as usize] = Note::new(trimmed_text.clone());
+                n.notes[line as usize] = Note::new(trimmed_text.clone(), note_to_edit.name.clone());
                 self.write_all_notes(n)?;
 
                 println!("Note committed! {}", trimmed_text);
@@ -217,8 +241,13 @@ fn main() {
     let rem = Rem::new();
 
     match opts {
-        config::Opt::Cat { numbered } => rem.cat(numbered).expect("Cound not read notes!"),
-        config::Opt::Add { note } => rem.write_note(note).expect("Could not add note!"),
+        config::Opt::Cat {
+            numbered,
+            without_names,
+        } => rem
+            .cat(numbered, without_names)
+            .expect("Cound not read notes!"),
+        config::Opt::Add { note, name } => rem.write_note(note, name).expect("Could not add note!"),
         config::Opt::Del { line, force } => rem
             .delete_line(line, force)
             .expect("Could not delete line!"),
@@ -251,7 +280,7 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path);
 
-        rem.write_note(vec![String::from("new note who dis")])
+        rem.write_note(vec![String::from("new note who dis")], None)
             .unwrap();
 
         let n = rem.read_note_file().unwrap();
@@ -265,12 +294,12 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("new note who dis")])
+        rem.write_note(vec![String::from("new note who dis")], None)
             .unwrap();
 
         let yaml = fs::read_to_string(path).unwrap();
         assert_eq!(
-            String::from("---\nnotes:\n  - text: new note who dis"),
+            String::from("---\nnotes:\n  - name: ~\n    text: new note who dis"),
             yaml
         );
     }
@@ -281,12 +310,14 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("first")]).unwrap();
-        rem.write_note(vec![String::from("second")]).unwrap();
+        rem.write_note(vec![String::from("first")], None).unwrap();
+        rem.write_note(vec![String::from("second")], None).unwrap();
 
         let yaml = fs::read_to_string(path).unwrap();
         assert_eq!(
-            String::from("---\nnotes:\n  - text: first\n  - text: second"),
+            String::from(
+                "---\nnotes:\n  - name: ~\n    text: first\n  - name: ~\n    text: second"
+            ),
             yaml
         );
     }
@@ -297,15 +328,15 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("first")]).unwrap();
-        rem.write_note(vec![String::from("second")]).unwrap();
-        rem.write_note(vec![String::from("third")]).unwrap();
+        rem.write_note(vec![String::from("first")], None).unwrap();
+        rem.write_note(vec![String::from("second")], None).unwrap();
+        rem.write_note(vec![String::from("third")], None).unwrap();
 
         rem.delete_line(1, true).unwrap();
 
         let yaml = fs::read_to_string(path).unwrap();
         assert_eq!(
-            String::from("---\nnotes:\n  - text: first\n  - text: third"),
+            String::from("---\nnotes:\n  - name: ~\n    text: first\n  - name: ~\n    text: third"),
             yaml
         );
     }
@@ -328,12 +359,34 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("first")]).unwrap();
+        rem.write_note(vec![String::from("first")], None).unwrap();
 
         rem.delete_line(1, true).unwrap();
 
         let yaml = fs::read_to_string(path).unwrap();
-        assert_eq!(String::from("---\nnotes:\n  - text: first"), yaml);
+        assert_eq!(
+            String::from("---\nnotes:\n  - name: ~\n    text: first"),
+            yaml
+        );
+    }
+
+    #[test]
+    fn test_rem_formats_file_in_yaml_with_name_field() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(
+            vec![String::from("new note who dis")],
+            Some(String::from("new")),
+        )
+        .unwrap();
+
+        let yaml = fs::read_to_string(path).unwrap();
+        assert_eq!(
+            String::from("---\nnotes:\n  - name: new\n    text: new note who dis"),
+            yaml
+        );
     }
 
     #[test]
@@ -342,7 +395,7 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("new note who dis")])
+        rem.write_note(vec![String::from("new note who dis")], None)
             .unwrap();
 
         let n = rem.read_note_file().unwrap();
@@ -351,12 +404,30 @@ mod tests {
     }
 
     #[test]
+    fn test_rem_writes_note_with_name() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(
+            vec![String::from("new note who dis")],
+            Some(String::from("new")),
+        )
+        .unwrap();
+
+        let n = rem.read_note_file().unwrap();
+        assert_eq!(1, n.notes.len());
+        assert_eq!("new note who dis", n.notes[0].text);
+        assert_eq!(Some(String::from("new")), n.notes[0].name);
+    }
+
+    #[test]
     fn test_rem_rejects_empty_note() {
         let file = NamedTempFile::new().unwrap();
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("")]).unwrap();
+        rem.write_note(vec![String::from("")], None).unwrap();
 
         let n = rem.read_note_file().unwrap();
         assert_eq!(0, n.notes.len());
@@ -368,7 +439,7 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("                ")])
+        rem.write_note(vec![String::from("                ")], None)
             .unwrap();
 
         let n = rem.read_note_file().unwrap();

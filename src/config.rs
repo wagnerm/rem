@@ -5,10 +5,16 @@ use structopt::StructOpt;
 pub enum Opt {
     Add {
         note: Vec<String>,
+
+        #[structopt(short, long)]
+        name: Option<String>,
     },
     Cat {
         #[structopt(short, long)]
         numbered: bool,
+
+        #[structopt(short, long)]
+        without_names: bool,
     },
     Del {
         line: u32,
