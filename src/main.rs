@@ -73,13 +73,13 @@ impl Rem {
         Ok(())
     }
 
-    fn write_note(&self, note: Vec<String>) -> Result<(), Box<dyn Error>> {
+    fn write_note(&self, note: Vec<String>, name: Option<String>) -> Result<(), Box<dyn Error>> {
         let whole_note = format!("{}", note.join(" "));
         if whole_note.is_empty() || whole_note.trim().is_empty() {
             println!("Your note is empty, try adding some content.");
             return Ok(());
         }
-        let n = Note::new(whole_note, None);
+        let n = Note::new(whole_note, name);
 
         let mut notes = self.read_note_file()?;
         notes.notes.push(n);
@@ -224,7 +224,7 @@ fn main() {
 
     match opts {
         config::Opt::Cat { numbered } => rem.cat(numbered).expect("Cound not read notes!"),
-        config::Opt::Add { note, name } => rem.write_note(note).expect("Could not add note!"),
+        config::Opt::Add { note, name } => rem.write_note(note, name).expect("Could not add note!"),
         config::Opt::Del { line, force } => rem
             .delete_line(line, force)
             .expect("Could not delete line!"),
@@ -257,7 +257,7 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path);
 
-        rem.write_note(vec![String::from("new note who dis")])
+        rem.write_note(vec![String::from("new note who dis")], None)
             .unwrap();
 
         let n = rem.read_note_file().unwrap();
@@ -271,7 +271,7 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("new note who dis")])
+        rem.write_note(vec![String::from("new note who dis")], None)
             .unwrap();
 
         let yaml = fs::read_to_string(path).unwrap();
@@ -287,8 +287,8 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("first")]).unwrap();
-        rem.write_note(vec![String::from("second")]).unwrap();
+        rem.write_note(vec![String::from("first")], None).unwrap();
+        rem.write_note(vec![String::from("second")], None).unwrap();
 
         let yaml = fs::read_to_string(path).unwrap();
         assert_eq!(
@@ -305,9 +305,9 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("first")]).unwrap();
-        rem.write_note(vec![String::from("second")]).unwrap();
-        rem.write_note(vec![String::from("third")]).unwrap();
+        rem.write_note(vec![String::from("first")], None).unwrap();
+        rem.write_note(vec![String::from("second")], None).unwrap();
+        rem.write_note(vec![String::from("third")], None).unwrap();
 
         rem.delete_line(1, true).unwrap();
 
@@ -336,7 +336,7 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("first")]).unwrap();
+        rem.write_note(vec![String::from("first")], None).unwrap();
 
         rem.delete_line(1, true).unwrap();
 
@@ -348,12 +348,31 @@ mod tests {
     }
 
     #[test]
+    fn test_rem_formats_file_in_yaml_with_name_field() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(
+            vec![String::from("new note who dis")],
+            Some(String::from("new")),
+        )
+        .unwrap();
+
+        let yaml = fs::read_to_string(path).unwrap();
+        assert_eq!(
+            String::from("---\nnotes:\n  - name: new\n    text: new note who dis"),
+            yaml
+        );
+    }
+
+    #[test]
     fn test_rem_writes_note() {
         let file = NamedTempFile::new().unwrap();
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("new note who dis")])
+        rem.write_note(vec![String::from("new note who dis")], None)
             .unwrap();
 
         let n = rem.read_note_file().unwrap();
@@ -362,12 +381,30 @@ mod tests {
     }
 
     #[test]
+    fn test_rem_writes_note_with_name() {
+        let file = NamedTempFile::new().unwrap();
+        let path = String::from(file.path().to_str().unwrap());
+        let rem = Rem::new_with_path(path.clone());
+
+        rem.write_note(
+            vec![String::from("new note who dis")],
+            Some(String::from("new")),
+        )
+        .unwrap();
+
+        let n = rem.read_note_file().unwrap();
+        assert_eq!(1, n.notes.len());
+        assert_eq!("new note who dis", n.notes[0].text);
+        assert_eq!(Some(String::from("new")), n.notes[0].name);
+    }
+
+    #[test]
     fn test_rem_rejects_empty_note() {
         let file = NamedTempFile::new().unwrap();
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("")]).unwrap();
+        rem.write_note(vec![String::from("")], None).unwrap();
 
         let n = rem.read_note_file().unwrap();
         assert_eq!(0, n.notes.len());
@@ -379,7 +416,7 @@ mod tests {
         let path = String::from(file.path().to_str().unwrap());
         let rem = Rem::new_with_path(path.clone());
 
-        rem.write_note(vec![String::from("                ")])
+        rem.write_note(vec![String::from("                ")], None)
             .unwrap();
 
         let n = rem.read_note_file().unwrap();
