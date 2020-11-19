@@ -21,6 +21,28 @@ Is mayonnaise an instrument?
 987654
 ```
 
+## Editing notes
+
+You can edit notes with the `edit` command.
+
+Please be aware:
+* You must have `$EDITOR` set in your environment
+* If your `$EDITOR` adds a trailing new line at the end of the note, it will be trimmed.
+
+```
+$ rem-cli cat -n
+0: Is mayonnaise an instrument?
+1: 987654
+
+$ rem-cli edit 0
+...
+Note committed! Squidward, I used your clarinet to unclog my toilet!
+
+$ rem-cli cat -n
+0: Squidward, I used your clarinet to unclog my toilet!"
+1: 987654
+```
+
 ## Notes Path
 
 By default notes are stored in `$HOME/rem_notes.txt`.
